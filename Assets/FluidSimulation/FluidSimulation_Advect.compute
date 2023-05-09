@@ -1,0 +1,205 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+StructuredBuffer<CellData> _CellDatas;
+RWStructuredBuffer<AdvectData> _AdvectDatas;
+StructuredBuffer<StaggeredPoint> _UStaggeredPoints;
+StructuredBuffer<StaggeredPoint> _VStaggeredPoints;
+
+[numthreads(256,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+	if(index >= _CellDatas.Length) {
+		return;
+	}
+
+	CellData cellData = _CellDatas[index];
+
+	float uVelocity = 0;
+	float vVelocity = 0;
+	int uCounter = 0;
+	int vCounter = 0;
+
+	int2 pointCoord = cellData.leftStaggeredPointCoord + int2(0, 0);
+	if(pointCoord.x >= 0 && pointCoord.x <= _Resolution.x && pointCoord.y >= 0 && pointCoord.y < _Resolution.y) {
+		int pointIndex = UStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _UStaggeredPoints[pointIndex];
+		uVelocity += staggeredPoint.velocity * staggeredPoint.scaler * 2;
+		uCounter += staggeredPoint.scaler * 2;
+	}
+
+	pointCoord = cellData.leftStaggeredPointCoord + int2(0, 1);
+	if(pointCoord.x >= 0 && pointCoord.x <= _Resolution.x && pointCoord.y >= 0 && pointCoord.y < _Resolution.y) {
+		int pointIndex = UStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _UStaggeredPoints[pointIndex];
+		uVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		uCounter += staggeredPoint.scaler;
+	}
+
+	pointCoord = cellData.leftStaggeredPointCoord + int2(0, -1);
+	if(pointCoord.x >= 0 && pointCoord.x <= _Resolution.x && pointCoord.y >= 0 && pointCoord.y < _Resolution.y) {
+		int pointIndex = UStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _UStaggeredPoints[pointIndex];
+		uVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		uCounter += staggeredPoint.scaler;
+	}
+
+	pointCoord = cellData.rightStaggeredPointCoord + int2(0, 0);
+	if(pointCoord.x >= 0 && pointCoord.x <= _Resolution.x && pointCoord.y >= 0 && pointCoord.y < _Resolution.y) {
+		int pointIndex = UStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _UStaggeredPoints[pointIndex];
+		uVelocity += staggeredPoint.velocity * staggeredPoint.scaler * 2;
+		uCounter += staggeredPoint.scaler * 2;
+	}
+
+	pointCoord = cellData.rightStaggeredPointCoord + int2(0, 1);
+	if(pointCoord.x >= 0 && pointCoord.x <= _Resolution.x && pointCoord.y >= 0 && pointCoord.y < _Resolution.y) {
+		int pointIndex = UStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _UStaggeredPoints[pointIndex];
+		uVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		uCounter += staggeredPoint.scaler;
+	}
+
+	pointCoord = cellData.rightStaggeredPointCoord + int2(0, -1);
+	if(pointCoord.x >= 0 && pointCoord.x <= _Resolution.x && pointCoord.y >= 0 && pointCoord.y < _Resolution.y) {
+		int pointIndex = UStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _UStaggeredPoints[pointIndex];
+		uVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		uCounter += staggeredPoint.scaler;
+	}
+
+	pointCoord = cellData.upStaggeredPointCoord + int2(0, 0);
+	if(pointCoord.x >= 0 && pointCoord.x < _Resolution.x && pointCoord.y >= 0 && pointCoord.y <= _Resolution.y) {
+		int pointIndex = VStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _VStaggeredPoints[pointIndex];
+		vVelocity += staggeredPoint.velocity * staggeredPoint.scaler * 2;
+		vCounter += staggeredPoint.scaler * 2;
+	}
+
+	pointCoord = cellData.upStaggeredPointCoord + int2(1, 0);
+	if(pointCoord.x >= 0 && pointCoord.x < _Resolution.x && pointCoord.y >= 0 && pointCoord.y <= _Resolution.y) {
+		int pointIndex = VStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _VStaggeredPoints[pointIndex];
+		vVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		vCounter += staggeredPoint.scaler;
+	}
+
+	pointCoord = cellData.upStaggeredPointCoord + int2(-1, 0);
+	if(pointCoord.x >= 0 && pointCoord.x < _Resolution.x && pointCoord.y >= 0 && pointCoord.y <= _Resolution.y) {
+		int pointIndex = VStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _VStaggeredPoints[pointIndex];
+		vVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		vCounter += staggeredPoint.scaler;
+	}
+
+	pointCoord = cellData.downStaggeredPointCoord + int2(0, 0);
+	if(pointCoord.x >= 0 && pointCoord.x < _Resolution.x && pointCoord.y >= 0 && pointCoord.y <= _Resolution.y) {
+		int pointIndex = VStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _VStaggeredPoints[pointIndex];
+		vVelocity += staggeredPoint.velocity * staggeredPoint.scaler * 2;
+		vCounter += staggeredPoint.scaler * 2;
+	}
+
+	pointCoord = cellData.downStaggeredPointCoord + int2(1, 0);
+	if(pointCoord.x >= 0 && pointCoord.x < _Resolution.x && pointCoord.y >= 0 && pointCoord.y <= _Resolution.y) {
+		int pointIndex = VStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _VStaggeredPoints[pointIndex];
+		vVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		vCounter += staggeredPoint.scaler;
+	}
+
+	pointCoord = cellData.downStaggeredPointCoord + int2(-1, 0);
+	if(pointCoord.x >= 0 && pointCoord.x < _Resolution.x && pointCoord.y >= 0 && pointCoord.y <= _Resolution.y) {
+		int pointIndex = VStaggeredPointCoordToIndex(pointCoord);
+		StaggeredPoint staggeredPoint = _VStaggeredPoints[pointIndex];
+		vVelocity += staggeredPoint.velocity * staggeredPoint.scaler;
+		vCounter += staggeredPoint.scaler;
+	}
+
+	if(uCounter == 0) {
+		uVelocity = 0;
+	}
+	else {
+		uVelocity /= uCounter;
+	}
+
+	if(vCounter == 0) {
+		vVelocity = 0;
+	}
+	else {
+		vVelocity /= vCounter;
+	}
+
+
+
+
+
+	float ut;
+	float vt;
+	int leftX;
+	int rightX;
+	int upY;
+	int downY;
+
+	float udist = -uVelocity;
+    if(udist > 0) {
+		ut = frac(udist);
+        leftX = cellData.coord.x + floor(udist);
+        rightX = leftX + 1;
+		leftX = min(leftX, _Resolution.x - 1);
+        rightX = min(rightX, _Resolution.x - 1);
+    }else {
+        udist = abs(udist);
+        ut = 1 - frac(udist);
+        leftX = cellData.coord.x - floor(udist) - 1;
+        rightX = leftX + 1;
+		leftX = max(leftX, 0);
+        rightX = max(rightX, 0);
+    }
+
+	float vdist = -vVelocity;
+    if(vdist > 0) {
+		vt = frac(vdist);
+        downY = cellData.coord.y + floor(vdist);
+        upY = downY + 1;
+		downY = min(downY, _Resolution.y - 1);
+        upY = min(upY, _Resolution.y - 1);
+    }else {
+        vdist = abs(vdist);
+        vt = 1 - frac(vdist);
+        downY = cellData.coord.y - floor(vdist) - 1;
+        upY = downY + 1;
+		downY = max(downY, 0);
+        upY = max(upY, 0);
+    }
+
+	int2 cellCoord0 = int2(leftX, downY);
+	int2 cellCoord1 = int2(leftX, upY);
+	int2 cellCoord2 = int2(rightX, upY);
+	int2 cellCoord3 = int2(rightX, downY);
+
+	CellData cellData0 = _CellDatas[CellCoordToIndex(cellCoord0)];
+	CellData cellData1 = _CellDatas[CellCoordToIndex(cellCoord1)];
+	CellData cellData2 = _CellDatas[CellCoordToIndex(cellCoord2)];
+	CellData cellData3 = _CellDatas[CellCoordToIndex(cellCoord3)];
+
+	float tempDensity0 = lerp(cellData0.density, cellData1.density, vt);
+	float tempDensity1 = lerp(cellData3.density, cellData2.density, vt);
+	float finalDensity = lerp(tempDensity0, tempDensity1, ut);
+
+	float2 tempVelocity0 = lerp(cellData0.velocity, cellData1.velocity, vt);
+	float2 tempVelocity1 = lerp(cellData3.velocity, cellData2.velocity, vt);
+	float2 finalVelocity = lerp(tempVelocity0, tempVelocity1, ut);
+
+	float4 tempColor0 = lerp(cellData0.color, cellData1.color, vt);
+	float4 tempColor1 = lerp(cellData3.color, cellData2.color, vt);
+	float4 finalColor = lerp(tempColor0, tempColor1, ut);
+
+	AdvectData advectData = _AdvectDatas[index];
+	advectData.density = finalDensity;
+	advectData.velocity = finalVelocity;
+	advectData.color = finalColor;
+	_AdvectDatas[index] = advectData;
+}

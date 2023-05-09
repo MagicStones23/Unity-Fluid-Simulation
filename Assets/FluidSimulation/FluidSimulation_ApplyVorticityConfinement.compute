@@ -1,0 +1,32 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+RWStructuredBuffer<CellData> _CellDatas;
+RWStructuredBuffer<VortexData> _VortexDatas;
+
+float _MaxSpeed;
+
+[numthreads(256,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if(index >= _VortexDatas.Length) {
+		return;
+	}
+
+	CellData cellData = _CellDatas[index];
+	VortexData vortexData = _VortexDatas[index];
+
+	cellData.velocity += vortexData.velocity;
+
+	float speed = length(cellData.velocity);
+	if(speed > _MaxSpeed) {
+		cellData.velocity = normalize(cellData.velocity) * _MaxSpeed;
+	}
+
+	vortexData.velocity = 0;
+
+	_CellDatas[index] = cellData;
+	_VortexDatas[index] = vortexData;
+}

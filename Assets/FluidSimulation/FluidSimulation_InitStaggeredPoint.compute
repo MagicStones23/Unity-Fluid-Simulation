@@ -1,0 +1,42 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+RWStructuredBuffer<StaggeredPoint> _StaggeredPoints;
+
+int _ColumnNumber;
+int _WallThickness;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint index = id.x + id.y * _ColumnNumber;
+	if(index >= _StaggeredPoints.Length) {
+		return;
+	}
+
+	StaggeredPoint staggeredPoint = _StaggeredPoints[index];
+	staggeredPoint.coord = id.xy;
+	staggeredPoint.scaler = 1;
+	staggeredPoint.velocity = 0;
+	staggeredPoint.summaryNumber = 0;
+
+	if(_ColumnNumber == _Resolution.x) {
+		if(staggeredPoint.coord.y < _WallThickness) {
+			staggeredPoint.scaler = 0;
+		}
+		else if(staggeredPoint.coord.y > _Resolution.y - _WallThickness) {
+			staggeredPoint.scaler = 0;
+		}
+	}
+	else {
+		if(staggeredPoint.coord.x < _WallThickness) {
+			staggeredPoint.scaler = 0;
+		}
+		else if(staggeredPoint.coord.x > _Resolution.x - _WallThickness) {
+			staggeredPoint.scaler = 0;
+		}
+	}
+
+	_StaggeredPoints[index] = staggeredPoint;
+}

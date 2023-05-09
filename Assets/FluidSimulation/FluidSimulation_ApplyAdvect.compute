@@ -1,0 +1,29 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+RWStructuredBuffer<CellData> _CellDatas;
+RWStructuredBuffer<AdvectData> _AdvectDatas;
+
+[numthreads(256,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if(index >= _CellDatas.Length) {
+		return;
+	}
+
+	CellData cellData = _CellDatas[index];
+	AdvectData advectData = _AdvectDatas[index];
+
+	cellData.density = advectData.density;
+	cellData.velocity = advectData.velocity;
+	cellData.color = advectData.color;
+
+	advectData.density = 0;
+	advectData.velocity = 0;
+	advectData.color = 0;
+
+	_CellDatas[index] = cellData;
+	_AdvectDatas[index] = advectData;
+}

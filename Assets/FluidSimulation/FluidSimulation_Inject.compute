@@ -1,0 +1,42 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+RWStructuredBuffer<CellData> _CellDatas;
+StructuredBuffer<InjectData> _InjectDatas;
+StructuredBuffer<StaggeredPoint> _UStaggeredPoints;
+StructuredBuffer<StaggeredPoint> _VStaggeredPoints;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint index = id.x + id.y * _Resolution.x;
+	if(index >= _CellDatas.Length) {
+		return;
+	}
+
+	CellData cellData = _CellDatas[index];
+	for(uint iii = 0; iii < _InjectDatas.Length; iii++) {
+		InjectData injectData = _InjectDatas[iii];
+
+		float dist = distance(cellData.coord, injectData.center);
+		float t = 1 - saturate(dist / injectData.radius);
+
+		if(t > 0) {
+			StaggeredPoint leftStaggeredPoint = _UStaggeredPoints[cellData.leftStaggeredPointIndex];
+			StaggeredPoint rightStaggeredPoint = _UStaggeredPoints[cellData.rightStaggeredPointIndex];
+			StaggeredPoint upStaggeredPoint = _VStaggeredPoints[cellData.upStaggeredPointIndex];
+			StaggeredPoint downStaggeredPoint = _VStaggeredPoints[cellData.downStaggeredPointIndex];
+
+			if(leftStaggeredPoint.scaler == 0 || rightStaggeredPoint.scaler == 0 || upStaggeredPoint.scaler == 0 || downStaggeredPoint.scaler == 0) {
+				continue;
+			}
+
+			cellData.density += injectData.density * t;
+			cellData.velocity += injectData.velocity * t;
+			cellData.color += injectData.color * t;
+		}
+	}
+
+	_CellDatas[index] = cellData;
+}

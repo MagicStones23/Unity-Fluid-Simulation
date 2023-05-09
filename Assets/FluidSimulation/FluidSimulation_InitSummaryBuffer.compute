@@ -1,0 +1,14 @@
+#pragma kernel CSMain
+
+RWStructuredBuffer<float> _SummaryDatas;
+
+[numthreads(256,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint index = id.x;
+	if(index >= _SummaryDatas.Length) {
+		return;
+	}
+
+	_SummaryDatas[index] = 0;
+}

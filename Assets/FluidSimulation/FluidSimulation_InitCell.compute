@@ -1,0 +1,59 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+RWStructuredBuffer<CellData> _CellDatas;
+RWStructuredBuffer<StaggeredPoint> _UStaggeredPoints;
+RWStructuredBuffer<StaggeredPoint> _VStaggeredPoints;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint index = id.x + id.y * _Resolution.x;
+	if(index >= _CellDatas.Length) {
+		return;
+	}
+
+	CellData cellData = _CellDatas[index];
+
+	cellData.coord = id.xy;
+	cellData.density = 0;
+	cellData.velocity = 0;
+
+	int2 leftStaggeredPointCoord = cellData.coord + int2(0, 0);
+    int2 rightStaggeredPointCoord = cellData.coord + int2(1, 0);
+	int2 upStaggeredPointCoord = cellData.coord + int2(0, 1);
+    int2 downStaggeredPointCoord = cellData.coord + int2(0, 0);
+
+	cellData.leftStaggeredPointCoord = leftStaggeredPointCoord;
+	cellData.rightStaggeredPointCoord = rightStaggeredPointCoord;
+	cellData.upStaggeredPointCoord = upStaggeredPointCoord;
+	cellData.downStaggeredPointCoord = downStaggeredPointCoord;
+
+    int leftStaggeredPointIndex = UStaggeredPointCoordToIndex(leftStaggeredPointCoord);
+    int rightStaggeredPointIndex = UStaggeredPointCoordToIndex(rightStaggeredPointCoord);
+    int upStaggeredPointIndex = VStaggeredPointCoordToIndex(upStaggeredPointCoord);
+    int downStaggeredPointIndex = VStaggeredPointCoordToIndex(downStaggeredPointCoord);
+
+	cellData.leftStaggeredPointIndex = leftStaggeredPointIndex;
+	cellData.rightStaggeredPointIndex = rightStaggeredPointIndex;
+	cellData.upStaggeredPointIndex = upStaggeredPointIndex;
+	cellData.downStaggeredPointIndex = downStaggeredPointIndex;
+
+    int leftStaggeredPointSummaryNumber;
+    int rightStaggeredPointSummaryNumber;
+    int upStaggeredPointSummaryNumber;
+    int downStaggeredPointSummaryNumber;
+
+	InterlockedAdd(_UStaggeredPoints[leftStaggeredPointIndex].summaryNumber, 1, leftStaggeredPointSummaryNumber);
+	InterlockedAdd(_UStaggeredPoints[rightStaggeredPointIndex].summaryNumber, 1, rightStaggeredPointSummaryNumber);
+	InterlockedAdd(_VStaggeredPoints[upStaggeredPointIndex].summaryNumber, 1, upStaggeredPointSummaryNumber);
+	InterlockedAdd(_VStaggeredPoints[downStaggeredPointIndex].summaryNumber, 1, downStaggeredPointSummaryNumber);
+
+	cellData.leftStaggeredPointSummaryIndex = leftStaggeredPointIndex * 2 + leftStaggeredPointSummaryNumber;
+	cellData.rightStaggeredPointSummaryIndex = rightStaggeredPointIndex * 2 + rightStaggeredPointSummaryNumber;
+	cellData.upStaggeredPointSummaryIndex = (upStaggeredPointIndex + _UStaggeredPoints.Length) * 2 + upStaggeredPointSummaryNumber;
+	cellData.downStaggeredPointSummaryIndex = (downStaggeredPointIndex + _UStaggeredPoints.Length) * 2 + downStaggeredPointSummaryNumber;
+
+	_CellDatas[index] = cellData;
+}

@@ -1,0 +1,56 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+RWStructuredBuffer<StaggeredPoint> _UStaggeredPoints;
+RWStructuredBuffer<StaggeredPoint> _VStaggeredPoints;
+RWStructuredBuffer<float> _SummaryDatas;
+
+float AverageVelocity(StaggeredPoint staggeredPoint, int index) {
+    int counter = 0;
+    float velocity = 0;
+    
+    int summaryIndex0 = index * 2;
+    int summaryIndex1 = index * 2 + 1;
+
+    if(_SummaryDatas[summaryIndex0] != 0) {
+        counter += 1;
+        velocity += _SummaryDatas[summaryIndex0];
+        _SummaryDatas[summaryIndex0] = 0;
+    }
+
+    if(_SummaryDatas[summaryIndex1] != 0) {
+        counter += 1;
+        velocity += _SummaryDatas[summaryIndex1];
+       _SummaryDatas[summaryIndex1] = 0;
+    }
+
+    if(counter == 0) {
+        return staggeredPoint.velocity;
+    }
+    else {
+        return staggeredPoint.velocity + velocity / counter;
+    }
+}
+
+[numthreads(256,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if(index >= _UStaggeredPoints.Length + _VStaggeredPoints.Length) {
+		return;
+	}
+
+    StaggeredPoint staggeredPoint;
+    
+    if(index >= _UStaggeredPoints.Length) {
+        staggeredPoint = _VStaggeredPoints[index % _UStaggeredPoints.Length];
+        staggeredPoint.velocity = AverageVelocity(staggeredPoint, index);
+        _VStaggeredPoints[index % _UStaggeredPoints.Length] = staggeredPoint;
+    }
+    else {
+        staggeredPoint = _UStaggeredPoints[index];
+        staggeredPoint.velocity = AverageVelocity(staggeredPoint, index);
+        _UStaggeredPoints[index] = staggeredPoint;
+    }
+}

@@ -1,0 +1,33 @@
+#pragma kernel CSMain
+
+#include "Assets/FluidSimulation/FluidSimulationLibrary.hlsl"
+
+StructuredBuffer<CellData> _CellDatas;
+RWStructuredBuffer<float> _SummaryDatas;
+
+[numthreads(256,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint index = id.x;
+	if(index >= _CellDatas.Length) {
+		return;
+	}
+
+	CellData cellData = _CellDatas[index];
+
+    float2 velocity = cellData.velocity;
+
+    if(velocity.x > 0) {
+        _SummaryDatas[cellData.rightStaggeredPointSummaryIndex] = velocity.x;
+    }
+    else if(velocity.x < 0) {
+        _SummaryDatas[cellData.leftStaggeredPointSummaryIndex] = velocity.x;
+    }
+
+    if(velocity.y > 0) {
+        _SummaryDatas[cellData.upStaggeredPointSummaryIndex] = velocity.y;
+    }
+    else if(velocity.y < 0) {
+        _SummaryDatas[cellData.downStaggeredPointSummaryIndex] = velocity.y;
+    }
+}
